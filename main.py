@@ -1,4 +1,5 @@
 import os
+import socket
 from rknnlite.api import RKNNLite
 import argparse
 import cv2
@@ -6,7 +7,8 @@ import time
 import numpy as np
 
 # gst-launch-1.0 udpsrc multicast-group=192.168.88.2 port=5000 ! application/x-rtp, payload=96 ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
-# python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.88.2 --stream-port 5000
+# python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.88.2 --stream-port 5000 --command-port 5565
+# python3 tools/receiver.py 0.0.0.0 5565
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Run a pose model on video and stream')
@@ -16,9 +18,18 @@ def parse_args():
     parser.add_argument('--num-clusses', help='the number of classes', type=int, default=17)
     parser.add_argument('--stream-ip', help='IP address of the streaming destination', required=True)
     parser.add_argument('--stream-port', help='Port of the streaming destination', type=int, default=5000)
+    parser.add_argument('--command-port', help='Port of the command destination', type=int, default=5565)
     parser.add_argument('--time', help='show inference & postprocess time', default=False)
     args = parser.parse_args()
     return args
+
+def send_command(ip, port, command):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.sendto(command.encode(), (ip, port))
+        print(f"Sent command: '{command}' to {ip}:{port}")
+    finally:
+        sock.close()
 
 def transform_preds(coords, width, model_size):
     scale_x = model_size / width
@@ -88,21 +99,27 @@ def preprocess_image(image, target_size=(512, 512)):
     return image
 
 def check_arms_above_head():
-    global head_pos, left_pos, right_pos
+    global head_pos, left_pos, right_pos, STREAM_IP, COMMAND_PORT
     print(f"Positions: head={head_pos}, left={left_pos}, right={right_pos}")
     if len(head_pos) > 0:
         if len(left_pos) > 0:
             if left_pos[0][1] < head_pos[0][1]:
                 print("Left arm is above head")
+                send_command(STREAM_IP, COMMAND_PORT, "right")
             else:
                 print("Left arm is not above head")
         if len(right_pos) > 0:
             if right_pos[0][1] < head_pos[0][1]:
                 print("Right arm is above head")
+                send_command(STREAM_IP, COMMAND_PORT, "left")
             else:
                 print("Right arm is not above head")
 
+STREAM_IP = None
+COMMAND_PORT = None
+
 def main():
+    global STREAM_IP, COMMAND_PORT
     args = parse_args()
     RKNN_MODEL = args.model
     VIDEO_PATH = args.video
@@ -110,6 +127,7 @@ def main():
     STREAM_PORT = args.stream_port
     MODEL_SIZE = args.size
     NUM_CLUSSES = args.num_clusses
+    COMMAND_PORT = args.command_port
     TIME = args.time
 
     rknn = RKNNLite()
