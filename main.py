@@ -26,22 +26,20 @@ def transform_preds(coords, width, model_size):
     target_coords = np.ones_like(coords)
     target_coords[:, :, 0] = coords[:, :, 0] * scale_x
     target_coords[:, :, 1] = coords[:, :, 1] * scale_y
-    
     return target_coords
 
 def _get_max_preds(heatmaps):
-    assert isinstance(heatmaps, np.ndarray), (
-        'heatmaps should be numpy.ndarray')
+    assert isinstance(heatmaps, np.ndarray), 'heatmaps should be numpy.ndarray'
     assert heatmaps.ndim == 4, 'batch images should be 4-ndim'
     
     N, K, H, W = heatmaps.shape
-    heatmaps_reshaped = heatmaps.reshape((N, K, -1)) # [H][W]: [1,1,3],[2,2,4] -> [1,1,3,2,2,4]
-    idx = np.argmax(heatmaps_reshaped, 2).reshape((N, K, 1)) # indexes of first max number
-    maxvals = np.amax(heatmaps_reshaped, 2).reshape((N, K, 1)) # values of first max number
+    heatmaps_reshaped = heatmaps.reshape((N, K, -1)) 
+    idx = np.argmax(heatmaps_reshaped, 2).reshape((N, K, 1)) 
+    maxvals = np.amax(heatmaps_reshaped, 2).reshape((N, K, 1)) 
 
     preds = np.tile(idx, (1,1,2)).astype(np.float32)
-    preds[:,:,0] = preds[:,:,0] % W # x of max_score pixel
-    preds[:,:,1] = preds[:,:,1] // W # y of max_score pixel
+    preds[:,:,0] = preds[:,:,0] % W 
+    preds[:,:,1] = preds[:,:,1] // W 
     
     preds = np.where(np.tile(maxvals, (1,1,2)) > 0.0, preds, -1)
     return preds, maxvals
@@ -61,10 +59,26 @@ def decode(outputs, model_size, num_clusses, batch_size=1):
     all_preds[:, :, 2:3] = maxvals[:,:num_clusses,:]
     return all_preds
 
+head_pos = []
+left_pos = []
+right_pos = []
+
 def draw(bgr, predict_dict):
-    for all_pred in predict_dict:
-        for x, y, s in all_pred:
+    global head_pos, left_pos, right_pos
+    head_pos = []
+    left_pos = []
+    right_pos = []
+    for i, all_pred in enumerate(predict_dict):
+        for j, (x, y, s) in enumerate(all_pred):
             cv2.circle(bgr, (int(x), int(y)), 3, (0, 255, 120), -1)
+            if s > 0:
+                cv2.putText(bgr, f'{j}', (int(x), int(y) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+                if j == 0:
+                    head_pos.append((x, y))
+                elif j == 9:
+                    left_pos.append((x, y))
+                elif j == 10:
+                    right_pos.append((x, y))
     return bgr
 
 def preprocess_image(image, target_size=(512, 512)):
@@ -72,6 +86,21 @@ def preprocess_image(image, target_size=(512, 512)):
     # image = image.astype(np.float32)
     image = np.expand_dims(image, axis=0)
     return image
+
+def check_arms_above_head():
+    global head_pos, left_pos, right_pos
+    print(f"Positions: head={head_pos}, left={left_pos}, right={right_pos}")
+    if len(head_pos) > 0:
+        if len(left_pos) > 0:
+            if left_pos[0][1] < head_pos[0][1]:
+                print("Left arm is above head")
+            else:
+                print("Left arm is not above head")
+        if len(right_pos) > 0:
+            if right_pos[0][1] < head_pos[0][1]:
+                print("Right arm is above head")
+            else:
+                print("Right arm is not above head")
 
 def main():
     args = parse_args()
@@ -142,6 +171,7 @@ def main():
         start = time.time()
         predict_dict = decode(outputs, MODEL_SIZE, NUM_CLUSSES)
         out_img = draw(resized_frame, predict_dict)
+        check_arms_above_head()
         end = time.time()
         runTime = end - start
         runTime_ms = runTime * 1000
