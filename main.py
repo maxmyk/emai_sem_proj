@@ -67,6 +67,12 @@ def draw(bgr, predict_dict):
             cv2.circle(bgr, (int(x), int(y)), 3, (0, 255, 120), -1)
     return bgr
 
+def preprocess_image(image, target_size=(512, 512)):
+    image = cv2.resize(image, target_size)
+    # image = image.astype(np.float32)
+    image = np.expand_dims(image, axis=0)
+    return image
+
 def main():
     args = parse_args()
     RKNN_MODEL = args.model
@@ -106,19 +112,27 @@ def main():
     if not cap.isOpened():
         print("Error opening video source")
         exit(-1)
+
+    target_width = MODEL_SIZE
+    target_height = MODEL_SIZE
+
     gst_pipeline = f'appsrc ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay config-interval=1 pt=96 ! udpsink host={STREAM_IP} port={STREAM_PORT}'
-    out = cv2.VideoWriter(gst_pipeline, cv2.CAP_GSTREAMER, 0, 30.0, (int(cap.get(3)), int(cap.get(4))))
+    out = cv2.VideoWriter(gst_pipeline, cv2.CAP_GSTREAMER, 0, 30.0, (target_width, target_height))
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        img = cv2.resize(frame, [MODEL_SIZE, MODEL_SIZE])
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA)
-        height, width, _ = img.shape
+        resized_frame = cv2.resize(frame, (target_width, target_height))
+        img = preprocess_image(resized_frame, target_size=(MODEL_SIZE, MODEL_SIZE))
+
         print("[main] Running model")
         start = time.time()
-        outputs = rknn.inference(inputs=[np.expand_dims(img, axis=0)])[0]
+        outputs = rknn.inference(inputs=[img])
+        if outputs is None:
+            print("Inference failed or returned None")
+            continue
+        outputs = outputs[0]
         end = time.time()
         runTime = end - start
         runTime_ms = runTime * 1000
@@ -127,7 +141,7 @@ def main():
         print("[main] Running postprocess")
         start = time.time()
         predict_dict = decode(outputs, MODEL_SIZE, NUM_CLUSSES)
-        out_img = draw(frame, predict_dict)
+        out_img = draw(resized_frame, predict_dict)
         end = time.time()
         runTime = end - start
         runTime_ms = runTime * 1000
