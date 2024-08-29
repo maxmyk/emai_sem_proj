@@ -7,7 +7,14 @@ import time
 import numpy as np
 
 # gst-launch-1.0 udpsrc multicast-group=192.168.88.2 port=5000 ! application/x-rtp, payload=96 ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
+#For MacOS
+#gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! udpsink host=192.168.2.1 port=5000
+
+
 # python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.88.2 --stream-port 5000 --command-port 5565
+
+#for MacOS
+#python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.2.1 --stream-port 5000 --command-port 5565
 # python3 tools/receiver.py 0.0.0.0 5565
 
 def parse_args():
@@ -106,14 +113,17 @@ def check_arms_above_head():
             if left_pos[0][1] < head_pos[0][1]:
                 print("Left arm is above head")
                 send_command(STREAM_IP, COMMAND_PORT, "right")
+                time.sleep(2)
             else:
                 print("Left arm is not above head")
         if len(right_pos) > 0:
             if right_pos[0][1] < head_pos[0][1]:
                 print("Right arm is above head")
                 send_command(STREAM_IP, COMMAND_PORT, "left")
+                time.sleep(2)
             else:
                 print("Right arm is not above head")
+        
 
 STREAM_IP = None
 COMMAND_PORT = None
