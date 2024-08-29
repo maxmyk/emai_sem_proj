@@ -122,3 +122,5 @@ Feel free to ask!
 
 
 ![bg right](<Screenshot from 2024-08-29 22-16-06.png>)
+![bg left](<Screenshot 2024-08-29 at 23.16.57.png>)
+
