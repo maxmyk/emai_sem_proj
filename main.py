@@ -107,23 +107,43 @@ def preprocess_image(image, target_size=(512, 512)):
 
 def check_arms_above_head():
     global head_pos, left_pos, right_pos, STREAM_IP, COMMAND_PORT
-    print(f"Positions: head={head_pos}, left={left_pos}, right={right_pos}")
+    min_hand_distance = 40
     if len(head_pos) > 0:
+        head_x, head_y = head_pos[0]
+
+        if len(left_pos) > 0 and len(right_pos) > 0:
+            left_x, left_y = left_pos[0]
+            right_x, right_y = right_pos[0]
+            
+            
+            hand_distance = np.linalg.norm(np.array([left_x, left_y]) - np.array([right_x, right_y]))
+
+         
+            if hand_distance < min_hand_distance:
+                print("Please show two hands to the camera or split your hands further apart.")
+                return  
+
+
         if len(left_pos) > 0:
-            if left_pos[0][1] < head_pos[0][1]:
+            left_x, left_y = left_pos[0]
+
+            if left_y < head_y:
                 print("Left arm is above head")
                 send_command(STREAM_IP, COMMAND_PORT, "right")
-                time.sleep(2)
+                time.sleep(1)  
             else:
                 print("Left arm is not above head")
+
+
         if len(right_pos) > 0:
-            if right_pos[0][1] < head_pos[0][1]:
+            right_x, right_y = right_pos[0]
+
+            if right_y < head_y:
                 print("Right arm is above head")
                 send_command(STREAM_IP, COMMAND_PORT, "left")
-                time.sleep(2)
+                time.sleep(2)  
             else:
-                print("Right arm is not above head")
-        
+                print("Right arm is not above head")    
 
 STREAM_IP = None
 COMMAND_PORT = None
