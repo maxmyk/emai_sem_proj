@@ -98,6 +98,14 @@ HANDY is an interactive presentation control system that uses hand gestures to n
    ```bash
    python3 tools/receiver.py 0.0.0.0 5565
    ```
+---
+
+## Issues with HANDY
+
+1. **Slide Delays**: Delays in slide transitions can interrupt presentations. Introducing a sleep mode during inactivity can help reduce these delays.
+
+2. **False Positives**: Incorrect command triggers occur due to false positives. Ensuring both arms are detected by the camera can improve accuracy and prevent unintended actions.
+
 
 ---
 
