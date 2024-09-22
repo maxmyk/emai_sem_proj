@@ -8,13 +8,19 @@ import numpy as np
 
 # gst-launch-1.0 udpsrc multicast-group=192.168.88.2 port=5000 ! application/x-rtp, payload=96 ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
 #For MacOS
+#Activate sender on orangepi
 #gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! udpsink host=192.168.2.1 port=5000
+#Activate receiver on MAC
+#gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp, media=(string)video, encoding-name=(string)H264, payload=(int)96" ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
+
 
 
 # python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.88.2 --stream-port 5000 --command-port 5565
 
 #for MacOS
+#Lauch programm
 #python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.2.1 --stream-port 5000 --command-port 5565
+#Run Receiver
 # python3 tools/receiver.py 0.0.0.0 5565
 
 def parse_args():
