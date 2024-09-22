@@ -25,7 +25,6 @@ def main():
     vosk_model = args.model_path
     STREAM_IP = args.stream_ip
     STREAM_PORT = args.stream_port
-    COMMAND_PORT = args.command_port
     model = Model(vosk_model)
     rec = KaldiRecognizer(model, 16000)
 
