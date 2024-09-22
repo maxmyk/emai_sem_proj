@@ -19,6 +19,9 @@ def handle_command(command):
     if command in COMMANDS: 
         key = COMMANDS[command]
         controller = keyboard.Controller()
+        
+        
+         
         controller.press(key)
         controller.release(key)
         print(f"Executed command: '{command}'")

@@ -107,7 +107,9 @@ def preprocess_image(image, target_size=(512, 512)):
 
 def check_arms_above_head():
     global head_pos, left_pos, right_pos, STREAM_IP, COMMAND_PORT
+
     min_hand_distance = 100
+
     if len(head_pos) > 0:
         head_x, head_y = head_pos[0]
 
