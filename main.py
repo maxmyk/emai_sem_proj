@@ -7,7 +7,14 @@ import time
 import numpy as np
 
 # gst-launch-1.0 udpsrc multicast-group=192.168.88.2 port=5000 ! application/x-rtp, payload=96 ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
+#For MacOS
+#gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! x264enc tune=zerolatency bitrate=500 speed-preset=superfast ! rtph264pay ! udpsink host=192.168.2.1 port=5000
+
+
 # python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.88.2 --stream-port 5000 --command-port 5565
+
+#for MacOS
+#python3 main.py --time True weights/human_pose.rknn 0 --stream-ip 192.168.2.1 --stream-port 5000 --command-port 5565
 # python3 tools/receiver.py 0.0.0.0 5565
 
 def parse_args():
@@ -100,20 +107,43 @@ def preprocess_image(image, target_size=(512, 512)):
 
 def check_arms_above_head():
     global head_pos, left_pos, right_pos, STREAM_IP, COMMAND_PORT
-    print(f"Positions: head={head_pos}, left={left_pos}, right={right_pos}")
+    min_hand_distance = 100
     if len(head_pos) > 0:
+        head_x, head_y = head_pos[0]
+
+        if len(left_pos) > 0 and len(right_pos) > 0:
+            left_x, left_y = left_pos[0]
+            right_x, right_y = right_pos[0]
+            
+            
+            hand_distance = np.linalg.norm(np.array([left_x, left_y]) - np.array([right_x, right_y]))
+
+         
+            if hand_distance < min_hand_distance:
+                print("Please show two hands to the camera or split your hands further apart.")
+                return  
+
+
         if len(left_pos) > 0:
-            if left_pos[0][1] < head_pos[0][1]:
+            left_x, left_y = left_pos[0]
+
+            if left_y < head_y:
                 print("Left arm is above head")
                 send_command(STREAM_IP, COMMAND_PORT, "right")
+                time.sleep(1)  
             else:
                 print("Left arm is not above head")
+
+
         if len(right_pos) > 0:
-            if right_pos[0][1] < head_pos[0][1]:
+            right_x, right_y = right_pos[0]
+
+            if right_y < head_y:
                 print("Right arm is above head")
                 send_command(STREAM_IP, COMMAND_PORT, "left")
+                time.sleep(2)  
             else:
-                print("Right arm is not above head")
+                print("Right arm is not above head")    
 
 STREAM_IP = None
 COMMAND_PORT = None
